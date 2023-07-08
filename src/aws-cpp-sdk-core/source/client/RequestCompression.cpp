@@ -19,8 +19,10 @@
 #else
 #define SET_BINARY_MODE(file)
 #endif // defined(MSDOS) || defined(OS2) || defined(WIN32) || defined(__CYGWIN__)
-// Defining zlib chunks to be 256k
-static const size_t ZLIB_CHUNK=263144;
+// Defining zlib chunks to be 256k, limited to uInt size
+static const size_t ZLIB_CHUNK=std::min(
+    std::numeric_limits<uInt>::max()>>1,
+    262144U); // 256k
 static const char AWS_REQUEST_COMPRESSION_ALLOCATION_TAG[] =
     "RequestCompressionAlloc";
 #endif // ENABLED_ZLIB_REQUEST_COMPRESSION
@@ -156,7 +158,7 @@ iostream_outcome Aws::Client::RequestCompression::compress(std::shared_ptr<Aws::
                 }
             }
             streamSize -= toRead; //left to read
-            strm.avail_in = (flush == Z_FINISH)?toRead-1:toRead; //skip EOF if included
+            strm.avail_in = static_cast<uInt>((flush == Z_FINISH)?toRead-1:toRead); //skip EOF if included
             strm.next_in = in.get();
             do
             {
@@ -277,7 +279,7 @@ Aws::Client::RequestCompression::uncompress(std::shared_ptr<Aws::IOStream> input
             }
 
             // Filling input buffer to decompress
-            strm.avail_in = toRead;
+            strm.avail_in = static_cast<uInt>(toRead);
             strm.next_in = in.get();
             do
             {
